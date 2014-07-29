@@ -3,6 +3,9 @@ By Boris Smus
 
 Phonegap/Cordova 2.X version available at the [WebIntent](https://github.com/phonegap/phonegap-plugins/tree/master/Android/WebIntent) plugin site.
 
+## About this fork ##
+This fork attempts to copy files from Assets directory into internal storage. Code for copying is taken from [VideoCopier](https://github.com/debagel/VideoCopier).
+
 ## Adding the Plugin to your project ##
 1. To install the plugin, use the Cordova CLI and enter the following:
 

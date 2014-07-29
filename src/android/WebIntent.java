@@ -2,6 +2,10 @@ package com.borismus.webintent;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 import org.apache.cordova.CordovaActivity;
 import org.json.JSONArray;
@@ -11,6 +15,7 @@ import org.json.JSONObject;
 import android.content.Intent;
 import android.net.Uri;
 import android.text.Html;
+import android.content.Context;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -32,6 +37,8 @@ public class WebIntent extends CordovaPlugin {
 
     private CallbackContext onNewIntentCallbackContext = null;
 
+    private static final String ASSETS = "file:///android_asset/";
+
     //public boolean execute(String action, JSONArray args, String callbackId) {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
@@ -48,7 +55,26 @@ public class WebIntent extends CordovaPlugin {
 				final CordovaResourceApi resourceApi = webView.getResourceApi();
                 JSONObject obj = args.getJSONObject(0);
                 String type = obj.has("type") ? obj.getString("type") : null;
-                Uri uri = obj.has("url") ? resourceApi.remapUri(Uri.parse(obj.getString("url"))) : null;
+
+                String url = obj.has("url") ? obj.getString("url") : null;
+                Uri uri = url != null && !url.contains(ASSETS) ? resourceApi.remapUri(Uri.parse(url)) : null;
+                if (url != null && url.contains(ASSETS)) {
+                    String filepath = url.replace(ASSETS, "");
+                    String filename = filepath.substring(filepath.lastIndexOf("/")+1, filepath.length());
+
+                    File fp = new File(this.cordova.getActivity().getFilesDir() + "/" + filename);
+                    if (!fp.exists()) {
+                        try {
+                            this.copy(filepath, filename);
+                        } catch (IOException e) {
+                            callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.IO_EXCEPTION));
+                            return true;
+                        }
+                    }
+
+                    uri = Uri.parse("file://" + this.cordova.getActivity().getFilesDir() + "/" + filename);
+                }
+
                 JSONObject extras = obj.has("extras") ? obj.getJSONObject("extras") : null;
                 Map<String, String> extrasMap = new HashMap<String, String>();
 
@@ -213,5 +239,17 @@ public class WebIntent extends CordovaPlugin {
         }
 
         ((CordovaActivity)this.cordova.getActivity()).sendBroadcast(intent);
+    }
+
+     private void copy(String fileFrom, String fileTo) throws IOException {
+        InputStream in = this.cordova.getActivity().getAssets().open(fileFrom);
+        FileOutputStream out = this.cordova.getActivity().openFileOutput(fileTo, Context.MODE_WORLD_READABLE);
+
+        byte[] buf = new byte[1024];
+        int len;
+        while ((len = in.read(buf)) > 0)
+            out.write(buf, 0, len);
+        in.close();
+        out.close();
     }
 }
